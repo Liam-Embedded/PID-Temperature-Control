@@ -19,11 +19,13 @@ void UART_GetTxFrame(void)
     tx_buf[0] = 0xAA;
     tx_buf[1] = ds18b20.temperature & 0xFF;
     tx_buf[2] = (ds18b20.temperature >> 8) & 0xFF;
-    tx_buf[3] = temperature_target & 0xFF;
-    tx_buf[4] = (temperature_target >> 8) & 0xFF;
-    tx_buf[5] = pwm_duty & 0xFF;
-    tx_buf[6] = (pwm_duty >> 8) & 0xFF;
-    tx_buf[7] = 0x55;
+    tx_buf[3] = pid.target & 0xFF;
+    tx_buf[4] = (pid.target >> 8) & 0xFF;
+    tx_buf[5] =  pid.error & 0xFF;
+    tx_buf[6] = (pid.error >> 8) & 0xFF;
+    tx_buf[7] =  pid.out & 0xFF;
+    tx_buf[8] = (pid.out >> 8) & 0xFF;
+    tx_buf[9] = 0x55;
 }
 
 void Task_Uart(void)
@@ -47,7 +49,7 @@ void Task_Uart(void)
 
         case UART_TX_READY:
             UART_GetTxFrame();
-            HAL_UART_Transmit_IT(&huart1,tx_buf,8);
+            HAL_UART_Transmit_IT(&huart1,tx_buf,10);
             comm_state = UART_TX_PROCESS;
         break;
 

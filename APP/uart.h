@@ -2,7 +2,7 @@
 #define __UART_H
 
 #define RX_BUF_MAX 10
-#define TX_BUF_MAX 10
+#define TX_BUF_MAX 12
 
 #include "main.h"
 #include "ds18b20.h"

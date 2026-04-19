@@ -1,18 +1,51 @@
 #include "controller.h"
 
-uint16_t temperature_target = 500; //精度0.1℃
-int16_t temperature_error = 0;
+uint16_t temperature_target = 500; //目标
+int16_t temperature_error = 0;  //偏差
 
-uint16_t Kp = 10;
-int16_t pwm_duty = 0;
 
-#define PWM_DUTY_MAX 999
-#define PWM_DUTY_MIN  0
+PID_TyptDef pid =
+{
+    .target = 500,   
+    .error = 0,
+    
+    .Kp = 10,       //比例增益 无量纲
+    .Ti = 10,       //积分时间 单位：s
+    .Ts = 1,        //采样时间 单位：s
+    
+    .integral = 0,  //积分累加和
+    .out = 0,       ////pid输出
+};
 
 //控制任务，1s执行一次
 void Task_Ctrl(void)
 {
-   Bang_Bang_Ctrl();
+   PI_Ctrl();
+}
+
+//比例-积分控制
+void PI_Ctrl(void)
+{
+   pid.error = pid.target - ds18b20.temperature; // 步骤1：偏差 = 目标 -测量
+   
+   pid.integral += pid.error;                    //步骤2：积分项累加         
+   
+    pid.out = (pid.Kp * pid.error) + ( pid.Kp * pid.Ts * pid.integral / pid.Ti);  //步骤3：计算比例、积分输出
+  
+   if(pid.out >= PWM_DUTY_MAX)                   //步骤4：限制pid输出在定时器占空比有效范围内
+   {
+     pid.out = PWM_DUTY_MAX;
+   }
+   else if(pid.out <= PWM_DUTY_MIN)
+   {
+     pid.out = PWM_DUTY_MIN;
+   }
+   else
+   {
+     pid.integral += pid.error;                //步骤5：抗积分饱和
+   }
+   
+   __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,pid.out); //步骤6：更新占空比，PWM输出控制开关管，进而控制功率输出 
 }
 
 
@@ -32,27 +65,6 @@ void Bang_Bang_Ctrl(void)
   else
   {}
 }
-
-
-//比例控制
-void P_Ctrl(void)
-{
-   temperature_error = temperature_target - ds18b20.temperature; //计算偏差
-   pwm_duty = Kp * temperature_error;  //计算PWM占空比
-   
-    if(pwm_duty > PWM_DUTY_MAX)  //限制在定时器的最大、最小占空比之内
-   {
-     pwm_duty = PWM_DUTY_MAX;
-   }
-   else if(pwm_duty < PWM_DUTY_MIN)
-   {
-     pwm_duty = PWM_DUTY_MIN;
-   }
-   
-   __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,pwm_duty); //更新占空比，控制开关管通断，进而控制功率输出 
-  
-}
-
 
 
 
